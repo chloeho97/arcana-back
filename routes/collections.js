@@ -20,14 +20,52 @@ router.post("/", async (req, res) => {
       return res.json({ result: false, error: "Missing or empty fields" });
     }
 
+    let coverUrl = undefined;
+
+    // Vérifier si une cover a été envoyée
+    if (req.files && req.files.cover) {
+      const coverFile = req.files.cover;
+      const tempDir = path.join(__dirname, "tmp");
+
+      // Vérifier si le dossier temporaire existe, sinon le créer
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+
+      const tempFilePath = path.join(
+        tempDir,
+        `${Date.now()}_${coverFile.name}`
+      );
+
+      // Sauvegarder temporairement l'image
+      await coverFile.mv(tempFilePath);
+
+      // Vérifier que le fichier existe avant de le téléverser
+      if (fs.existsSync(tempFilePath)) {
+        const cloudinaryResponse = await cloudinary.uploader.upload(
+          tempFilePath,
+          {
+            folder: "collectionCover", // Spécifier le dossier sur Cloudinary
+          }
+        );
+
+        // Supprimer le fichier temporaire après téléversement
+        fs.unlinkSync(tempFilePath);
+
+        // Stocker l'URL de l'image téléversée
+        coverUrl = cloudinaryResponse.secure_url;
+      } else {
+        return res
+          .status(500)
+          .json({ result: false, error: "Temporary file not found" });
+      }
+    }
+
     // Création de la collection
     const newCollection = new Collection({
       title: req.body.title,
       description: req.body.description || "",
-      cover:
-        req.body.cover && req.body.cover.trim() !== ""
-          ? req.body.cover
-          : undefined,
+      cover: coverUrl, // Ajout de l'URL de la cover
       visibility: req.body.visibility,
       userId: req.body.userId,
       collaborators: req.body.collaborators || [],
