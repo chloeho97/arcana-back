@@ -25,7 +25,11 @@ router.post("/", async (req, res) => {
     // Vérifier si une cover a été envoyée
     if (req.files && req.files.cover) {
       const coverFile = req.files.cover;
-      const tempDir = path.join(__dirname, "tmp");
+
+      const isServerless = process.env.VERCEL; // Vérifier si l'environnement est Vercel
+      const tempDir = isServerless
+        ? path.join(os.tmpdir(), "arcana-collection-covers")
+        : path.join(__dirname, "tmp");
 
       // Vérifier si le dossier temporaire existe, sinon le créer
       if (!fs.existsSync(tempDir)) {
@@ -45,7 +49,7 @@ router.post("/", async (req, res) => {
         const cloudinaryResponse = await cloudinary.uploader.upload(
           tempFilePath,
           {
-            folder: "collectionCover", // Spécifier le dossier sur Cloudinary
+            folder: "collectionCover", // Dossier Cloudinary
           }
         );
 
@@ -225,7 +229,11 @@ router.put("/:id", async (req, res) => {
     // Vérifier si une nouvelle cover a été envoyée
     if (req.files && req.files.cover) {
       const coverFile = req.files.cover;
-      const tempDir = path.join(__dirname, "tmp");
+
+      const isServerless = process.env.VERCEL; // Vérifier si l'environnement est Vercel
+      const tempDir = isServerless
+        ? path.join(os.tmpdir(), "arcana-collection-covers")
+        : path.join(__dirname, "tmp");
 
       // Vérifier si le dossier temporaire existe, sinon le créer
       if (!fs.existsSync(tempDir)) {

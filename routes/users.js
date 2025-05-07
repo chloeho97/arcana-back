@@ -300,7 +300,11 @@ router.put("/:userId", async (req, res) => {
     // Vérifiez si un avatar a été envoyé dans la requête
     if (req.files && req.files.avatar) {
       const avatarFile = req.files.avatar;
-      const tempDir = path.join(__dirname, "tmp");
+
+      const isServerless = process.env.VERCEL;
+      const tempDir = isServerless
+        ? path.join(os.tmpdir(), "arcana-avatars")
+        : path.join(__dirname, "tmp");
 
       // Vérifier si le dossier temporaire existe, sinon le créer
       if (!fs.existsSync(tempDir)) {
