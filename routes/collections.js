@@ -6,6 +6,9 @@ const Activity = require("../models/activity");
 const User = require("../models/users");
 const { checkbody } = require("../modules/checkbody");
 const { ObjectId } = require("mongodb");
+const cloudinary = require("cloudinary").v2;
+const fs = require("fs");
+const path = require("path");
 
 // Route POST pour créer une nouvelle collection
 router.post("/", async (req, res) => {
@@ -172,17 +175,62 @@ router.get("/:id", async (req, res) => {
 // PUT /collections/:id – update collection
 router.put("/:id", async (req, res) => {
   try {
-    const updated = await Collection.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true }
-    );
-    if (!updated) {
+    const collection = await Collection.findById(req.params.id);
+    if (!collection) {
       return res
         .status(404)
         .json({ result: false, error: "Collection not found" });
     }
-    res.json({ result: true, collection: updated });
+
+    let coverUrl = collection.cover; // Conserver l'ancienne image si aucune nouvelle n'est envoyée
+
+    // Vérifier si une nouvelle cover a été envoyée
+    if (req.files && req.files.cover) {
+      const coverFile = req.files.cover;
+      const tempDir = path.join(__dirname, "tmp");
+
+      // Vérifier si le dossier temporaire existe, sinon le créer
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+
+      const tempFilePath = path.join(
+        tempDir,
+        `${Date.now()}_${coverFile.name}`
+      );
+
+      // Sauvegarder temporairement l'image
+      await coverFile.mv(tempFilePath);
+
+      // Vérifier que le fichier existe avant de le téléverser
+      if (fs.existsSync(tempFilePath)) {
+        const cloudinaryResponse = await cloudinary.uploader.upload(
+          tempFilePath,
+          {
+            folder: "collectionCover", // Dossier Cloudinary
+          }
+        );
+
+        // Supprimer le fichier temporaire après téléversement
+        fs.unlinkSync(tempFilePath);
+
+        // Stocker l'URL de la nouvelle image téléversée
+        coverUrl = cloudinaryResponse.secure_url;
+      } else {
+        return res
+          .status(500)
+          .json({ result: false, error: "Temporary file not found" });
+      }
+    }
+
+    // Mettre à jour la collection avec la nouvelle cover si elle a changé
+    const updatedCollection = await Collection.findByIdAndUpdate(
+      req.params.id,
+      { ...req.body, cover: coverUrl }, // Mise à jour avec la nouvelle image
+      { new: true }
+    );
+
+    res.json({ result: true, collection: updatedCollection });
   } catch (err) {
     console.error("Error updating collection:", err);
     res.status(500).json({ result: false, error: "Server error" });

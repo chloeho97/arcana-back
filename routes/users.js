@@ -6,6 +6,9 @@ const User = require("../models/users");
 const { checkbody } = require("../modules/checkbody");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const cloudinary = require("cloudinary").v2;
+const fs = require("fs");
+const path = require("path");
 
 // Route pour l'inscription (méthode classique)
 router.post("/signup", async (req, res) => {
@@ -294,7 +297,46 @@ router.put("/:userId", async (req, res) => {
   }
 
   try {
-    // Utiliser findByIdAndUpdate pour mettre à jour l'utilisateur directement
+    // Vérifiez si un avatar a été envoyé dans la requête
+    if (req.files && req.files.avatar) {
+      const avatarFile = req.files.avatar;
+      const tempDir = path.join(__dirname, "tmp");
+
+      // Vérifier si le dossier temporaire existe, sinon le créer
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+
+      const tempFilePath = path.join(
+        tempDir,
+        `${Date.now()}_${avatarFile.name}`
+      );
+
+      // Sauvegarder temporairement l'image
+      await avatarFile.mv(tempFilePath);
+
+      // Vérifier que le fichier existe avant de le téléverser
+      if (fs.existsSync(tempFilePath)) {
+        const cloudinaryResponse = await cloudinary.uploader.upload(
+          tempFilePath,
+          {
+            folder: "avatars", // Spécifier le dossier sur Cloudinary
+          }
+        );
+
+        // Supprimer le fichier temporaire après téléversement
+        fs.unlinkSync(tempFilePath);
+
+        // Ajouter l'URL de l'image à updatedData
+        updatedData.avatar = cloudinaryResponse.secure_url;
+      } else {
+        return res
+          .status(500)
+          .json({ result: false, error: "Temporary file not found" });
+      }
+    }
+
+    // Utiliser findByIdAndUpdate pour mettre à jour l'utilisateur
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       updatedData,
