@@ -25,7 +25,7 @@ const app = express();
 const cors = require("cors");
 app.use(
   cors({
-    origin: "https://arcana-front-one.vercel.app",
+    origin: "https://arcana-front-v2.vercel.app",
     credentials: true,
   })
 );
