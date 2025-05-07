@@ -9,6 +9,7 @@ const jwt = require("jsonwebtoken");
 const cloudinary = require("cloudinary").v2;
 const fs = require("fs");
 const path = require("path");
+const os = require("os");
 
 // Route pour l'inscription (méthode classique)
 router.post("/signup", async (req, res) => {

@@ -9,6 +9,7 @@ const { ObjectId } = require("mongodb");
 const cloudinary = require("cloudinary").v2;
 const fs = require("fs");
 const path = require("path");
+const os = require("os");
 
 // Route POST pour créer une nouvelle collection
 router.post("/", async (req, res) => {
